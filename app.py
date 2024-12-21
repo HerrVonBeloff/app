@@ -4,7 +4,7 @@ from datetime import datetime
 import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
-
+import plotly.graph_objects as go
 
 def get_current_temperature(city, api_key):
     global BASE_URL
@@ -48,56 +48,153 @@ def plot_horizontal_temperature_range(mean_temp, std_temp, current_temp):
     lower_bound = mean_temp - 2 * std_temp
     upper_bound = mean_temp + 2 * std_temp
 
-    fig, ax = plt.subplots(figsize=(10, 4))
+    # Создание графика
+    fig = go.Figure()
 
-    ax.plot([mean_temp, mean_temp], [-1, 1], color='green', alpha=0.5)
-    ax.plot([lower_bound, lower_bound], [1, -1], color='green', alpha=0.5)
-    ax.plot([upper_bound, upper_bound], [1, -1], color='green', alpha=0.5)
+    # Добавление горизонтальной линии для средней температуры
+    fig.add_trace(go.Scatter(
+        x=[mean_temp, mean_temp],
+        y=[-1, 1],
+        mode='lines',
+        line=dict(color='green', width=2, dash='solid'),
+        name='Средняя температура'
+    ))
 
-    ax.plot([current_temp, current_temp], [1.2, -1.2], color='red', alpha=0.6)
-    ax.add_patch(Rectangle((lower_bound, -1), upper_bound-lower_bound, 2, color='green', alpha=0.2))
+    # Добавление горизонтальных линий для нижней и верхней границ
+    fig.add_trace(go.Scatter(
+        x=[lower_bound, lower_bound],
+        y=[-1, 1],
+        mode='lines',
+        line=dict(color='green', width=2, dash='dash'),
+        name='Нижняя граница'
+    ))
+    fig.add_trace(go.Scatter(
+        x=[upper_bound, upper_bound],
+        y=[-1, 1],
+        mode='lines',
+        line=dict(color='green', width=2, dash='dash'),
+        name='Верхняя граница'
+    ))
 
-    ax.spines['bottom'].set_position(('data', 0))
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    # Добавление вертикальной линии для текущей температуры
+    fig.add_trace(go.Scatter(
+        x=[current_temp, current_temp],
+        y=[-1.2, 1.2],
+        mode='lines',
+        line=dict(color='red', width=2, dash='solid'),
+        name='Текущая температура'
+    ))
 
+    # Добавление закрашенной области между границами
+    fig.add_trace(go.Scatter(
+        x=[lower_bound, upper_bound, upper_bound, lower_bound],
+        y=[-1, -1, 1, 1],
+        fill='toself',
+        fillcolor='rgba(0, 255, 0, 0.2)',
+        line=dict(color='rgba(0, 0, 0, 0)'),
+        name='Диапазон температур'
+    ))
 
-    ax.set_ybound(-5, 5)
-    ax.set_xbound(-40, 40)
-    ax.set_yticks([]) 
-    ax.text(mean_temp, -1.8, f"{mean_temp:.2f} °C", color='green', ha='center', va='bottom', fontsize=10)
-    ax.text(lower_bound, -1.8, f"{lower_bound:.2f} °C", color='green', ha='center', va='bottom', fontsize=10)
-    ax.text(upper_bound, -1.8, f"{upper_bound:.2f} °C", color='green', ha='center', va='bottom', fontsize=10)
-    ax.text(current_temp, 1.5, f"{current_temp:.2f} °C", color='red', ha='center', va='bottom', fontsize=10)
-    st.pyplot(fig)
+    # Настройка осей и стилей
+    fig.update_layout(
+        xaxis=dict(range=[-40, 40], title="Температура (°C)"),
+        yaxis=dict(range=[-5, 5], showticklabels=False),
+        showlegend=True,
+        title="Диапазон температур",
+        template="plotly_white"
+    )
 
-def historical_plot(data):
-    fig, ax = plt.subplots(figsize=(12, 3))
-    ax.scatter(data[(data['city']==city) & (data['anomaly']==True)]['timestamp'], 
-                data[(data['city']==city) & (data['anomaly']==True)]['temperature'], 
-                s=2, 
-                alpha=0.5,
-                color='r'
-                )
-    ax.scatter(data[(data['city']==city) & (data['anomaly']==False)]['timestamp'], 
-                data[(data['city']==city) & (data['anomaly']==False)]['temperature'], 
-                s=1, 
-                alpha=0.5,
-                color='green'
-                )
-    ax.plot(data[data['city']==city]['timestamp'], data[data['city']==city]['moving_avg'], color='darkgreen', alpha=0.7, linewidth=0.7)
-    ax.fill_between(data[data['city']==city]['timestamp'], 
-                    data[data['city']==city]['moving_avg']+2*data[data['city']==city]['moving_std'],
-                    data[data['city']==city]['moving_avg']-2*data[data['city']==city]['moving_std'],
-                    color='darkgreen',
-                    alpha=0.1
-                    )
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
-    st.pyplot(fig)
+    # Добавление текста
+    fig.add_annotation(
+        x=mean_temp, y=-1.8,
+        text=f"{mean_temp:.2f} °C",
+        showarrow=False,
+        font=dict(color='green', size=10)
+    )
+    fig.add_annotation(
+        x=lower_bound, y=-1.8,
+        text=f"{lower_bound:.2f} °C",
+        showarrow=False,
+        font=dict(color='green', size=10)
+    )
+    fig.add_annotation(
+        x=upper_bound, y=-1.8,
+        text=f"{upper_bound:.2f} °C",
+        showarrow=False,
+        font=dict(color='green', size=10)
+    )
+    fig.add_annotation(
+        x=current_temp, y=1.5,
+        text=f"{current_temp:.2f} °C",
+        showarrow=False,
+        font=dict(color='red', size=10)
+    )
+
+    # Вывод графика в Streamlit
+    st.plotly_chart(fig)
+
+def historical_plot(data, city):
+    # Фильтрация данных по городу
+    city_data = data[data['city'] == city]
+
+    # Создание графика
+    fig = go.Figure()
+
+    # Добавление точек для аномальных и нормальных температур
+    fig.add_trace(go.Scatter(
+        x=city_data[city_data['anomaly']]['timestamp'],
+        y=city_data[city_data['anomaly']]['temperature'],
+        mode='markers',
+        marker=dict(color='red', size=4, opacity=0.5),
+        name='Аномальная температура'
+    ))
+    fig.add_trace(go.Scatter(
+        x=city_data[~city_data['anomaly']]['timestamp'],
+        y=city_data[~city_data['anomaly']]['temperature'],
+        mode='markers',
+        marker=dict(color='green', size=2, opacity=0.5),
+        name='Нормальная температура'
+    ))
+
+    # Добавление линии скользящего среднего
+    fig.add_trace(go.Scatter(
+        x=city_data['timestamp'],
+        y=city_data['moving_avg'],
+        mode='lines',
+        line=dict(color='darkgreen', width=1),
+        name='Скользящее среднее'
+    ))
+
+    # Добавление закрашенной области для диапазона
+    fig.add_trace(go.Scatter(
+        x=city_data['timestamp'],
+        y=city_data['moving_avg'] + 2 * city_data['moving_std'],
+        mode='lines',
+        line=dict(color='rgba(0, 100, 0, 0.1)'),
+        fill=None,
+        showlegend=False
+    ))
+    fig.add_trace(go.Scatter(
+        x=city_data['timestamp'],
+        y=city_data['moving_avg'] - 2 * city_data['moving_std'],
+        mode='lines',
+        line=dict(color='rgba(0, 100, 0, 0.1)'),
+        fill='tonexty',
+        fillcolor='rgba(0, 100, 0, 0.1)',
+        showlegend=False
+    ))
+
+    # Настройка осей и стилей
+    fig.update_layout(
+        xaxis=dict(title="Время"),
+        yaxis=dict(title="Температура (°C)"),
+        showlegend=True,
+        title=f"Исторические данные для города {city}",
+        template="plotly_white"
+    )
+
+    # Вывод графика в Streamlit
+    st.plotly_chart(fig)
 st.title("Temperature Anomaly Detection")
 
 
@@ -138,7 +235,7 @@ if st.button("Проверить температуру"):
                 st.write(f"Средняя температура в текущем месяце: {mean_temp:.2f} °C")
                 st.write(f"Диапазон допустимых температур: ({mean_temp-2*std_temp:.2f} ;{mean_temp+2*std_temp:.2f}) °C")
                 plot_horizontal_temperature_range(mean_temp, std_temp, current_temp)
-                historical_plot(df)
+                historical_plot(df, city)
                 
             else:
                 st.warning("Нет исторических данных для анализа")
